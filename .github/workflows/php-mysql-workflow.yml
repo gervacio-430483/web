@@ -1,4 +1,4 @@
-name: PHP MySQL Website CI/CD
+name: PHP to GitHub Pages
 
 on:
   push:
@@ -33,18 +33,22 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v2
 
-      # Step 2: Set up PHP environment
+      # Step 2: Set up PHP
       - name: Set up PHP
         uses: shivammathur/setup-php@v2
         with:
           php-version: '8.0'
           extensions: mysqli, pdo_mysql
 
-      # Step 3: Install dependencies (Composer for PHP)
+      # Step 3: Navigate to the directory containing composer.json (if it's not in the root)
+      - name: Navigate to the correct directory
+        run: cd web # Change 'web' to the correct directory where composer.json is located
+
+      # Step 4: Install Composer dependencies
       - name: Install Composer dependencies
         run: composer install --no-interaction
 
-      # Step 4: Wait for MySQL to be ready
+      # Step 5: Wait for MySQL to be ready
       - name: Wait for MySQL to be ready
         run: |
           until mysqladmin ping -h"127.0.0.1" --silent; do
@@ -52,18 +56,29 @@ jobs:
             sleep 5
           done
 
-      # Step 5: Run PHPUnit tests
-      - name: Run PHPUnit tests
-        run: vendor/bin/phpunit --configuration phpunit.xml
-
-      # Step 6: Deploy to Production (example with FTP, could be adapted to your needs)
-      - name: Deploy to production
+      # Step 6: Generate static files
+      - name: Generate static files
         run: |
-          echo "Deploying to production..."
-          # FTP or SSH deployment commands go here
-          # e.g., rsync, scp, etc.
+          mkdir -p build
+          php generate_static.php
 
-      # Step 7: Clean up
+      # Step 7: Checkout gh-pages branch (if it exists)
+      - name: Checkout gh-pages branch
+        uses: actions/checkout@v2
+        with:
+          ref: gh-pages
+
+      # Step 8: Copy static files to gh-pages branch
+      - name: Copy static files to gh-pages branch
+        run: |
+          rm -rf *  # Clean up the gh-pages branch
+          cp -r ../build/* .  # Copy the generated static files
+          git config --global user.name "GitHub Actions"
+          git config --global user.email "actions@github.com"
+          git add .
+          git commit -m "Update static files"
+          git push origin gh-pages
+
+      # Step 9: Clean up
       - name: Clean up
-        run: |
-          echo "Cleaning up resources..."
+        run: echo "Cleanup completed."
