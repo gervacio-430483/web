@@ -1,0 +1,69 @@
+name: PHP MySQL Website CI/CD
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    services:
+      mysql:
+        image: mysql:8
+        env:
+          MYSQL_ROOT_PASSWORD: rootpassword
+          MYSQL_DATABASE: test_db
+          MYSQL_USER: user
+          MYSQL_PASSWORD: password
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping --silent"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=5
+
+    steps:
+      # Step 1: Checkout the repository
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      # Step 2: Set up PHP environment
+      - name: Set up PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.0'
+          extensions: mysqli, pdo_mysql
+
+      # Step 3: Install dependencies (Composer for PHP)
+      - name: Install Composer dependencies
+        run: composer install --no-interaction
+
+      # Step 4: Wait for MySQL to be ready
+      - name: Wait for MySQL to be ready
+        run: |
+          until mysqladmin ping -h"127.0.0.1" --silent; do
+            echo "Waiting for MySQL to be ready..."
+            sleep 5
+          done
+
+      # Step 5: Run PHPUnit tests
+      - name: Run PHPUnit tests
+        run: vendor/bin/phpunit --configuration phpunit.xml
+
+      # Step 6: Deploy to Production (example with FTP, could be adapted to your needs)
+      - name: Deploy to production
+        run: |
+          echo "Deploying to production..."
+          # FTP or SSH deployment commands go here
+          # e.g., rsync, scp, etc.
+
+      # Step 7: Clean up
+      - name: Clean up
+        run: |
+          echo "Cleaning up resources..."
